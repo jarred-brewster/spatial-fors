@@ -30,7 +30,9 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <div id="sentenceOutput" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 24px; font-family: Arial, sans-serif; z-index: 20; background: white; padding: 6px 12px; border: 2px solid black; border-radius: 8px;">
+</div>
+<div class="container">
     <select class="dropdown" style="top: 10px;">
       <option>F = Figure or referent</option>
       <option>Me</option>
@@ -63,19 +65,12 @@
       <option>Jim's plate</option>
     </select>
     <select class="dropdown" style="top: 170px;">
-      <option>A = Anchor point</option>
-      <option>North</option>
-      <option>East</option>
-      <option>South</option>
-      <option>West</option>
+      <option>FOR = Frame of Reference</option>
+      <option>Intrinsic</option>
+      <option>Relative</option>
+      <option>Absolute</option>
     </select>
-    <select class="dropdown" style="top: 210px;">
-      <option>L = Designated Landmark</option>
-      <option>Door</option>
-      <option>Window</option>
-      <option>Table</option>
-    </select>
-    <canvas id="canvas2D"></canvas>
+       <canvas id="canvas2D"></canvas>
   </div>
   <script>
     const canvas = document.getElementById('canvas2D');
@@ -461,6 +456,47 @@ draw = function () {
         ctx.restore();
       }
     }
+  }
+  const forDropdown = document.querySelectorAll('select')[4];
+  const outputBox = document.getElementById('sentenceOutput');
+  const angleBox = document.getElementById('angleCounter');
+
+  // Only update sentence when FOR = Relative and F, G, V are selected
+  if (forDropdown.value === 'Relative' && figureLabel && groundLabel && viewpointLabel &&
+      figureLabel !== "F = Figure or referent" &&
+      groundLabel !== "G = Ground or relatum" &&
+      viewpointLabel !== "V = Viewpoint of observer") {
+
+    const GLabel = dropdownG.value === "Same as X" ? dropdownX.value : dropdownV.value;
+    const pointF = getObjectCoordinates(figureLabel);
+    const pointG = getObjectCoordinates(GLabel);
+    const pointV = getObjectCoordinates(viewpointLabel);
+
+    if (pointF && pointG && pointV) {
+      // Get angle between V→F and F→G vectors
+      const v1x = pointF.x - pointV.x;
+      const v1y = pointF.y - pointV.y;
+      const v2x = pointG.x - pointF.x;
+      const v2y = pointG.y - pointF.y;
+      const dot = v1x * v2x + v1y * v2y;
+      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+      const angleDeg = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
+
+      let sentence = '';
+      if (angleDeg >= 45 && angleDeg <= 135) {
+        sentence = `${figureLabel} is next to ${GLabel}`;
+      } else if (angleDeg > 135 && angleDeg < 180) {
+        sentence = `${figureLabel} is behind ${GLabel}`;
+      } else if (angleDeg > 0 && angleDeg < 45) {
+        sentence = `${figureLabel} is in front of ${GLabel}`;
+      }
+      outputBox.textContent = sentence;
+      angleBox.textContent = `Angle: ${angleDeg.toFixed(1)}°`;
+    }
+  } else {
+    outputBox.textContent = '';
+    angleBox.textContent = '';
   }
 };
 
