@@ -331,6 +331,140 @@
 
     initDots();
     draw();
+// --- F-G and V-F Tapered Dotted Line Logic ---
+const dropdownF = document.querySelectorAll('select')[0];
+const dropdownG = document.querySelectorAll('select')[1];
+const dropdownV = document.querySelectorAll('select')[2];
+const dropdownX = document.querySelectorAll('select')[3];
+
+function getObjectCoordinates(label) {
+  const jimAngle = dots[0];
+  const leilaAngle = dots[1];
+
+  switch (label) {
+    case 'Jim':
+      return {
+        x: ovalCenter.x + (ovalRadiusX + 100) * Math.cos(jimAngle),
+        y: ovalCenter.y + (ovalRadiusY + 100) * Math.sin(jimAngle)
+      };
+    case 'Leila':
+      return {
+        x: ovalCenter.x + (ovalRadiusX + 100) * Math.cos(leilaAngle),
+        y: ovalCenter.y + (ovalRadiusY + 100) * Math.sin(leilaAngle)
+      };
+    case 'Me':
+      return {
+        x: canvas.width / 2,
+        y: canvas.height - 30
+      };
+    case 'Table':
+      return { x: ovalCenter.x, y: ovalCenter.y };
+    case 'Flower pot': {
+      const angle = dots[0];
+      return {
+        x: ovalCenter.x + ovalRadiusX * Math.cos(angle),
+        y: ovalCenter.y + ovalRadiusY * Math.sin(angle) + 75
+      };
+    }
+    case "Leila's plate":
+    case "Jim's plate": {
+      const index = label === "Leila's plate" ? 1 : 0;
+      const angle = dots[index];
+      const dotPos = getDotPosition(angle);
+      return {
+        x: (dotPos.x + ovalCenter.x) / 2,
+        y: (dotPos.y + ovalCenter.y) / 2
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function resolveGroundValue() {
+  const gVal = dropdownG.value;
+  if (gVal === "Same as X") return dropdownX.value;
+  if (gVal === "Same as V") return dropdownV.value;
+  return gVal;
+}
+
+function drawTaperedDots(start, end, color) {
+  const steps = 20;
+  const dx = (end.x - start.x) / steps;
+  const dy = (end.y - start.y) / steps;
+  for (let i = 0; i <= steps; i++) {
+    const x = start.x + dx * i;
+    const y = start.y + dy * i;
+    const radius = 6 - (5 * i) / steps; // from 6 to 1
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+}
+
+const originalDraw = draw;
+draw = function () {
+  originalDraw();
+
+  const figureLabel = dropdownF.value;
+  const groundLabel = resolveGroundValue();
+  const viewpointLabel = dropdownV.value;
+
+  // F to G (blue tapered dots if "Me" involved, otherwise line)
+  if (
+    figureLabel &&
+    groundLabel &&
+    figureLabel !== "F = Figure or referent" &&
+    groundLabel !== "G = Ground or relatum"
+  ) {
+    const start = getObjectCoordinates(figureLabel);
+    const end = getObjectCoordinates(groundLabel);
+    if (start && end) {
+      if (figureLabel === "Me" || groundLabel === "Me") {
+        drawTaperedDots(start, end, 'blue');
+      } else {
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  // V to F (yellow tapered dots if "Me" involved, otherwise line)
+  if (
+    figureLabel &&
+    viewpointLabel &&
+    figureLabel !== "F = Figure or referent" &&
+    viewpointLabel !== "V = Viewpoint of observer"
+  ) {
+    const start = getObjectCoordinates(viewpointLabel);
+    const end = getObjectCoordinates(figureLabel);
+    if (start && end) {
+      if (viewpointLabel === "Me" || figureLabel === "Me") {
+        drawTaperedDots(start, end, 'yellow');
+      } else {
+        ctx.save();
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+};
+
+document.querySelectorAll('select').forEach(sel => sel.addEventListener('change', draw));
   </script>
 </body>
 </html>
