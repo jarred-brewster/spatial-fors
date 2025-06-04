@@ -162,10 +162,6 @@
       ctx.lineTo(stickX + 26, stickY + headRadius + 130);
       ctx.stroke();
 
-      ctx.beginPath();
-      ctx.arc(stickX, stickY + headRadius + 78, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = 'purple';
-      ctx.fill();
     }
 
     function draw() {
@@ -281,10 +277,7 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      ctx.beginPath();
-      ctx.arc(ovalCenter.x, topCenterY, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = 'purple';
-      ctx.fill();
+  
     }
 
     function getAngleFromPosition(x, y) {
