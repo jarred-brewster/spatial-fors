@@ -355,11 +355,7 @@ function getObjectCoordinates(label) {
     case 'Table':
       return { x: ovalCenter.x, y: ovalCenter.y };
     case 'Flower pot': {
-      const angle = dots[0];
-      return {
-        x: ovalCenter.x + ovalRadiusX * Math.cos(angle),
-        y: ovalCenter.y + ovalRadiusY * Math.sin(angle) + 75
-      };
+       return { x: ovalCenter.x, y: ovalCenter.y };
     }
     case "Leila's plate":
     case "Jim's plate": {
