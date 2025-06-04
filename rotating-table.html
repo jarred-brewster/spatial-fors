@@ -457,47 +457,85 @@ draw = function () {
       }
     }
   }
-  const forDropdown = document.querySelectorAll('select')[4];
-  const outputBox = document.getElementById('sentenceOutput');
-  const angleBox = document.getElementById('angleCounter');
+const forDropdown = document.querySelectorAll('select')[4];
+const outputBox = document.getElementById('sentenceOutput');
 
-  // Only update sentence when FOR = Relative and F, G, V are selected
-  if (forDropdown.value === 'Relative' && figureLabel && groundLabel && viewpointLabel &&
-      figureLabel !== "F = Figure or referent" &&
-      groundLabel !== "G = Ground or relatum" &&
-      viewpointLabel !== "V = Viewpoint of observer") {
+const GLabelRaw = dropdownG.value === "Same as X" ? dropdownX.value : dropdownV.value;
+let figureLabelAdj = figureLabel;
+let groundLabelAdj = GLabelRaw;
 
-    const GLabel = dropdownG.value === "Same as X" ? dropdownX.value : dropdownV.value;
-    const pointF = getObjectCoordinates(figureLabel);
-    const pointG = getObjectCoordinates(GLabel);
-    const pointV = getObjectCoordinates(viewpointLabel);
+// Rewrite names for pronouns
+if (figureLabel === 'Me') figureLabelAdj = 'I';
+if (figureLabel === 'Jim' && viewpointLabel === 'Jim') figureLabelAdj = 'I, Jim';
+if (figureLabel === 'Leila' && viewpointLabel === 'Leila') figureLabelAdj = 'I, Leila';
+if (GLabelRaw === 'Jim' && viewpointLabel === 'Jim') groundLabelAdj = 'me, Jim';
+if (GLabelRaw === 'Leila' && viewpointLabel === 'Leila') groundLabelAdj = 'me, Leila';
 
-    if (pointF && pointG && pointV) {
-      // Get angle between V→F and F→G vectors
-      const v1x = pointF.x - pointV.x;
-      const v1y = pointF.y - pointV.y;
-      const v2x = pointG.x - pointF.x;
-      const v2y = pointG.y - pointF.y;
-      const dot = v1x * v2x + v1y * v2y;
-      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
-      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
-      const angleDeg = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
+const pointF = getObjectCoordinates(figureLabel);
+const pointG = getObjectCoordinates(GLabelRaw);
+const pointV = getObjectCoordinates(viewpointLabel);
 
-      let sentence = '';
-      if (angleDeg >= 45 && angleDeg <= 135) {
-        sentence = `${figureLabel} is next to ${GLabel}`;
-      } else if (angleDeg > 135 && angleDeg < 180) {
-        sentence = `${figureLabel} is behind ${GLabel}`;
-      } else if (angleDeg > 0 && angleDeg < 45) {
-        sentence = `${figureLabel} is in front of ${GLabel}`;
-      }
-      outputBox.textContent = sentence;
-      angleBox.textContent = `Angle: ${angleDeg.toFixed(1)}°`;
-    }
-  } else {
-    outputBox.textContent = '';
-    angleBox.textContent = '';
+let sentence = '';
+
+if (forDropdown.value === 'Relative' && pointF && pointG && pointV) {
+  const v1x = pointF.x - pointV.x;
+  const v1y = pointF.y - pointV.y;
+  const v2x = pointG.x - pointF.x;
+  const v2y = pointG.y - pointF.y;
+  const dot = v1x * v2x + v1y * v2y;
+  const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+  const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+  const angleDeg = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
+
+  if (angleDeg >= 45 && angleDeg <= 135) {
+    sentence = `${figureLabelAdj} is to the side of ${groundLabelAdj}`;
+  } else if (angleDeg > 135.1 && angleDeg < 180) {
+    sentence = `${figureLabelAdj} is behind ${groundLabelAdj}`;
+  } else if (angleDeg > 0 && angleDeg < 44.9) {
+    sentence = `${figureLabelAdj} is in front of ${groundLabelAdj}`;
   }
+} else if (forDropdown.value === 'Absolute' && pointF && pointG) {
+  const dx = pointF.x - pointG.x;
+  const dy = pointF.y - pointG.y;
+  const absAngle = Math.atan2(-dy, dx) * (180 / Math.PI);
+  const angle = (absAngle + 360) % 360;
+  if (angle >= 337.5 || angle < 22.5) sentence = `${figureLabelAdj} is east of ${groundLabelAdj}`;
+  else if (angle >= 22.5 && angle < 67.5) sentence = `${figureLabelAdj} is northeast of ${groundLabelAdj}`;
+  else if (angle >= 67.5 && angle < 112.5) sentence = `${figureLabelAdj} is north of ${groundLabelAdj}`;
+  else if (angle >= 112.5 && angle < 157.5) sentence = `${figureLabelAdj} is northwest of ${groundLabelAdj}`;
+  else if (angle >= 157.5 && angle < 202.5) sentence = `${figureLabelAdj} is west of ${groundLabelAdj}`;
+  else if (angle >= 202.5 && angle < 247.5) sentence = `${figureLabelAdj} is southwest of ${groundLabelAdj}`;
+  else if (angle >= 247.5 && angle < 292.5) sentence = `${figureLabelAdj} is south of ${groundLabelAdj}`;
+  else sentence = `${figureLabelAdj} is southeast of ${groundLabelAdj}`;
+} else if (forDropdown.value === 'Intrinsic' && pointF && pointG && pointV) {
+  const dist = Math.hypot(pointF.x - pointG.x, pointF.y - pointG.y);
+  const isFaced = label => ["Jim", "Leila"].includes(label);
+
+  if (isFaced(figureLabel) && isFaced(GLabelRaw)) {
+    const fFront = { x: pointF.x, y: pointF.y - 1 };
+    const gFront = { x: pointG.x, y: pointG.y - 1 };
+    const vf1x = fFront.x - pointV.x;
+    const vf1y = fFront.y - pointV.y;
+    const vf2x = gFront.x - pointV.x;
+    const vf2y = gFront.y - pointV.y;
+    const dot = vf1x * vf2x + vf1y * vf2y;
+    const mag1 = Math.sqrt(vf1x ** 2 + vf1y ** 2);
+    const mag2 = Math.sqrt(vf2x ** 2 + vf2y ** 2);
+    const angle = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
+    if (angle < 25) sentence = `${figureLabelAdj} is in front of ${groundLabelAdj}`;
+    else sentence = `${figureLabelAdj} is beside ${groundLabelAdj}`;
+  } else if (!isFaced(figureLabel) || !isFaced(GLabelRaw)) {
+    sentence = dist < 150 ? `${figureLabelAdj} is around ${groundLabelAdj}` : `${figureLabelAdj} is away from ${groundLabelAdj}`;
+  } else {
+    sentence = dist < 200 ? `${figureLabelAdj} is near ${groundLabelAdj}` : `${figureLabelAdj} is far from ${groundLabelAdj}`;
+  }
+}
+
+// Final grammar fix
+if (sentence.startsWith("I ")) sentence = sentence.replace(" is ", " am ");
+
+outputBox.textContent = sentence;
+
 };
 
 document.querySelectorAll('select').forEach(sel => sel.addEventListener('change', draw));
