@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Oval Table</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+    }
+    .container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: block;
+    }
+    .dropdown {
+      position: absolute;
+      left: 10px;
+      z-index: 10;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="sentenceOutput" style="position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 24px; font-family: Arial, sans-serif; z-index: 20; background: white; padding: 6px 12px; border: 2px solid black; border-radius: 8px;">
+</div>
+<div id="angleCounter" style="position: absolute; top: 45px; left: 50%; transform: translateX(-50%); font-size: 16px; font-family: monospace; z-index: 20; background: white; padding: 4px 8px; border: 1px solid #333; border-radius: 6px;"></div>
+<div class="container">
+    <select class="dropdown" style="top: 10px;">
+      <option>F = Figure or referent</option>
+      <option>Me</option>
+      <option>Leila</option>
+      <option>Jim</option>
+      <option>Table</option>
+      <option>Flower pot</option>
+      <option>Leila's plate</option>
+      <option>Jim's plate</option>
+    </select>
+    <select class="dropdown" style="top: 50px;">
+      <option>G = Ground or relatum</option>
+      <option>Same as X</option>
+      <option>Same as V</option>
+      </select>
+    <select class="dropdown" style="top: 90px;">
+      <option>V = Viewpoint of observer</option>
+      <option>Me</option>
+      <option>Leila</option>
+      <option>Jim</option>
+    </select>
+    <select class="dropdown" style="top: 130px;">
+      <option>X = Origin of the coordinate system</option>
+      <option>Me</option>
+      <option>Leila</option>
+      <option>Jim</option>
+      <option>Table</option>
+      <option>Flower pot</option>
+      <option>Leila's plate</option>
+      <option>Jim's plate</option>
+    </select>
+    <select class="dropdown" style="top: 170px;">
+      <option>FOR = Frame of Reference</option>
+      <option>Intrinsic</option>
+      <option>Relative</option>
+      <option>Absolute</option>
+    </select>
+       <canvas id="canvas2D"></canvas>
+  </div>
+  <script>
+    const canvas = document.getElementById('canvas2D');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let ovalCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+    let ovalRadiusX = 200;
+    let ovalRadiusY = 100;
+    let dotCount = 3;
+    let dots = [];
+    let draggingIndex = null;
+
+    const minRadius = 25;
+    const maxRadius = 35;
+    const ovalAspect = ovalRadiusY / ovalRadiusX;
+
+    function initDots() {
+      dots = [];
+      for (let i = 0; i < dotCount; i++) {
+        const angle = (i / dotCount) * 2 * Math.PI;
+        dots.push(angle);
+      }
+    }
+
+    function getDotPosition(angle) {
+      return {
+        x: ovalCenter.x + ovalRadiusX * Math.cos(angle),
+        y: ovalCenter.y + ovalRadiusY * Math.sin(angle)
+      };
+    }
+
+    function drawStickman(angle, name) {
+      const stickDistance = 100;
+      const stickX = ovalCenter.x + (ovalRadiusX + stickDistance) * Math.cos(angle);
+      const stickY = ovalCenter.y + (ovalRadiusY + stickDistance) * Math.sin(angle);
+
+      ctx.font = '16px Arial';
+      ctx.fillStyle = 'black';
+      ctx.textAlign = 'center';
+      ctx.fillText(name, stickX, stickY - 30);
+
+      const headRadius = 26;
+      ctx.beginPath();
+      ctx.arc(stickX, stickY, headRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      const dx = ovalCenter.x - stickX;
+      const dy = ovalCenter.y - stickY;
+      const orbitAngle = Math.atan2(dy, dx);
+      const faceRadius = headRadius * 0.6;
+      const faceX = stickX + faceRadius * Math.cos(orbitAngle);
+      const faceY = stickY + faceRadius * Math.sin(orbitAngle);
+
+      const alpha = Math.max(0, Math.min(1, Math.cos(orbitAngle)));
+      if (alpha > 0) {
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(faceX - 4, faceY - 4, 3, 0, 2 * Math.PI);
+        ctx.arc(faceX + 4, faceY - 4, 3, 0, 2 * Math.PI);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(faceX, faceY + 5, 6, 0, Math.PI);
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(stickX, stickY + headRadius);
+      ctx.lineTo(stickX, stickY + headRadius + 78);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(stickX - 39, stickY + headRadius + 26);
+      ctx.lineTo(stickX + 39, stickY + headRadius + 26);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(stickX, stickY + headRadius + 78);
+      ctx.lineTo(stickX - 26, stickY + headRadius + 130);
+      ctx.moveTo(stickX, stickY + headRadius + 78);
+      ctx.lineTo(stickX + 26, stickY + headRadius + 130);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(stickX, stickY + headRadius + 78, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = 'purple';
+      ctx.fill();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const redDotRenderQueue = [];
+      const whiteOvalRenderQueue = [];
+
+      dots.forEach((angle) => {
+        const dotPos = getDotPosition(angle);
+
+        ctx.beginPath();
+        ctx.moveTo(dotPos.x, dotPos.y);
+        ctx.lineTo(dotPos.x, dotPos.y + 150);
+        ctx.strokeStyle = '#5C4033';
+        ctx.lineWidth = 27;
+        ctx.stroke();
+      });
+
+      drawStickman(dots[0], 'Jim');
+      drawStickman(dots[1], 'Leila');
+
+      dots.forEach((angle) => {
+        const dotPos = getDotPosition(angle);
+
+        const topY = ovalCenter.y - ovalRadiusY;
+        const bottomY = ovalCenter.y + ovalRadiusY;
+        const controlY = (dotPos.y + ovalCenter.y) / 2;
+        const normalizedProximity = (controlY - topY) / (bottomY - topY);
+
+        const radius = minRadius + (maxRadius - minRadius) * normalizedProximity;
+        const radiusOffset = maxRadius - radius;
+
+        const directionX = dotPos.x - ovalCenter.x;
+        const directionY = dotPos.y - ovalCenter.y;
+        const length = Math.sqrt(directionX * directionX + directionY * directionY);
+
+        const baseShiftX = directionX / length * radiusOffset;
+        const baseShiftY = directionY / length * radiusOffset;
+
+        const adjustedX = (dotPos.x + ovalCenter.x) / 2 + baseShiftX;
+        const adjustedY = (dotPos.y + ovalCenter.y) / 2 + baseShiftY;
+
+        const rx = radius;
+        const ry = radius * ovalAspect;
+
+        whiteOvalRenderQueue.push({ x: adjustedX, y: adjustedY, rx, ry });
+        redDotRenderQueue.push({ x: dotPos.x, y: dotPos.y });
+      });
+
+      ctx.beginPath();
+      ctx.ellipse(ovalCenter.x, ovalCenter.y, ovalRadiusX, ovalRadiusY, 0, 0, 2 * Math.PI);
+      ctx.fillStyle = '#8B4513';
+      ctx.fill();
+      ctx.strokeStyle = 'gray';
+      ctx.stroke();
+
+      whiteOvalRenderQueue.forEach(({ x, y, rx, ry }) => {
+        ctx.beginPath();
+        ctx.ellipse(x, y, rx, ry, 0, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      redDotRenderQueue.forEach(({ x, y }) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+      });
+
+      const rxCenter = (minRadius + maxRadius) / 2;
+      const ryCenter = rxCenter * ovalAspect;
+      const cylinderHeight = 50;
+      const topCenterY = ovalCenter.y - cylinderHeight;
+
+      const grad = ctx.createLinearGradient(0, topCenterY, 0, ovalCenter.y);
+      grad.addColorStop(0, '#ccc');
+      grad.addColorStop(1, '#888');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(ovalCenter.x - rxCenter, ovalCenter.y);
+      ctx.lineTo(ovalCenter.x - rxCenter, topCenterY);
+      ctx.ellipse(ovalCenter.x, topCenterY, rxCenter, ryCenter, 0, Math.PI, 0, true);
+      ctx.lineTo(ovalCenter.x + rxCenter, ovalCenter.y);
+      ctx.ellipse(ovalCenter.x, ovalCenter.y, rxCenter, ryCenter, 0, 0, Math.PI);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.ellipse(ovalCenter.x, topCenterY, rxCenter, ryCenter, 0, 0, 2 * Math.PI);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+      ctx.strokeStyle = 'black';
+      ctx.stroke();
+
+      const floatingYellowDotY = topCenterY - cylinderHeight;
+      const yellowAngle = dots[0];
+      const yellowDotX = ovalCenter.x + rxCenter * Math.cos(yellowAngle);
+      const yellowDotY = floatingYellowDotY + ryCenter * Math.sin(yellowAngle);
+      ctx.beginPath();
+      ctx.arc(yellowDotX, yellowDotY, 3.75, 0, 2 * Math.PI);
+      ctx.fillStyle = 'yellow';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(yellowDotX, yellowDotY);
+      ctx.lineTo(ovalCenter.x, topCenterY);
+      ctx.strokeStyle = 'green';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(ovalCenter.x, topCenterY, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = 'purple';
+      ctx.fill();
+    }
+
+    function getAngleFromPosition(x, y) {
+      return Math.atan2(y - ovalCenter.y, (x - ovalCenter.x) * (ovalRadiusY / ovalRadiusX));
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      for (let i = 0; i < dots.length; i++) {
+        const { x, y } = getDotPosition(dots[i]);
+        const dx = e.clientX - x;
+        const dy = e.clientY - y;
+        if (dx * dx + dy * dy < 100) {
+          draggingIndex = i;
+          return;
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (draggingIndex !== null) {
+        const angle = getAngleFromPosition(e.clientX, e.clientY);
+        const offset = angle - dots[draggingIndex];
+        for (let i = 0; i < dots.length; i++) {
+          dots[i] = (dots[i] + offset + 2 * Math.PI) % (2 * Math.PI);
+        }
+        draw();
+      }
+    });
+
+    canvas.addEventListener('mouseup', () => draggingIndex = null);
+    canvas.addEventListener('mouseleave', () => draggingIndex = null);
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      ovalCenter = { x: canvas.width / 2, y: canvas.height / 2 };
+      draw();
+    });
+
+    initDots();
+    draw();
+// --- F-G and V-F Tapered Dotted Line Logic ---
+const dropdownF = document.querySelectorAll('select')[0];
+const dropdownG = document.querySelectorAll('select')[1];
+const dropdownV = document.querySelectorAll('select')[2];
+const dropdownX = document.querySelectorAll('select')[3];
+
+function getObjectCoordinates(label) {
+  const jimAngle = dots[0];
+  const leilaAngle = dots[1];
+
+  switch (label) {
+    case 'Jim':
+      return {
+        x: ovalCenter.x + (ovalRadiusX + 100) * Math.cos(jimAngle),
+        y: ovalCenter.y + (ovalRadiusY + 100) * Math.sin(jimAngle)
+      };
+    case 'Leila':
+      return {
+        x: ovalCenter.x + (ovalRadiusX + 100) * Math.cos(leilaAngle),
+        y: ovalCenter.y + (ovalRadiusY + 100) * Math.sin(leilaAngle)
+      };
+    case 'Me':
+      return {
+        x: canvas.width / 2,
+        y: canvas.height - 30
+      };
+    case 'Table':
+      return { x: ovalCenter.x, y: ovalCenter.y };
+    case 'Flower pot': {
+      const angle = dots[0];
+      return {
+        x: ovalCenter.x + ovalRadiusX * Math.cos(angle),
+        y: ovalCenter.y + ovalRadiusY * Math.sin(angle) + 75
+      };
+    }
+    case "Leila's plate":
+    case "Jim's plate": {
+      const index = label === "Leila's plate" ? 1 : 0;
+      const angle = dots[index];
+      const dotPos = getDotPosition(angle);
+      return {
+        x: (dotPos.x + ovalCenter.x) / 2,
+        y: (dotPos.y + ovalCenter.y) / 2
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function resolveGroundValue() {
+  const gVal = dropdownG.value;
+  if (gVal === "Same as X") return dropdownX.value;
+  if (gVal === "Same as V") return dropdownV.value;
+  return gVal;
+}
+
+function drawTaperedDots(start, end, color) {
+  const steps = 20;
+  const dx = (end.x - start.x) / steps;
+  const dy = (end.y - start.y) / steps;
+  for (let i = 0; i <= steps; i++) {
+    const x = start.x + dx * i;
+    const y = start.y + dy * i;
+    const radius = 6 - (5 * i) / steps; // from 6 to 1
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+}
+
+const originalDraw = draw;
+draw = function () {
+  originalDraw();
+
+  const figureLabel = dropdownF.value;
+  const groundLabel = resolveGroundValue();
+  const viewpointLabel = dropdownV.value;
+
+  // F to G (blue tapered dots if "Me" involved, otherwise line)
+  if (
+    figureLabel &&
+    groundLabel &&
+    figureLabel !== "F = Figure or referent" &&
+    groundLabel !== "G = Ground or relatum"
+  ) {
+    const start = getObjectCoordinates(figureLabel);
+    const end = getObjectCoordinates(groundLabel);
+    if (start && end) {
+      if (figureLabel === "Me" || groundLabel === "Me") {
+        drawTaperedDots(start, end, 'blue');
+      } else {
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = 'blue';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  // V to F (yellow tapered dots if "Me" involved, otherwise line)
+  if (
+    figureLabel &&
+    viewpointLabel &&
+    figureLabel !== "F = Figure or referent" &&
+    viewpointLabel !== "V = Viewpoint of observer"
+  ) {
+    const start = getObjectCoordinates(viewpointLabel);
+    const end = getObjectCoordinates(figureLabel);
+    if (start && end) {
+      if (viewpointLabel === "Me" || figureLabel === "Me") {
+        drawTaperedDots(start, end, 'yellow');
+      } else {
+        ctx.save();
+        ctx.setLineDash([2, 4]);
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.strokeStyle = 'yellow';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+  const forDropdown = document.querySelectorAll('select')[4];
+  const outputBox = document.getElementById('sentenceOutput');
+  const angleBox = document.getElementById('angleCounter');
+
+  // Only update sentence when FOR = Relative and F, G, V are selected
+  if (forDropdown.value === 'Relative' && figureLabel && groundLabel && viewpointLabel &&
+      figureLabel !== "F = Figure or referent" &&
+      groundLabel !== "G = Ground or relatum" &&
+      viewpointLabel !== "V = Viewpoint of observer") {
+
+    const GLabel = dropdownG.value === "Same as X" ? dropdownX.value : dropdownV.value;
+    const pointF = getObjectCoordinates(figureLabel);
+    const pointG = getObjectCoordinates(GLabel);
+    const pointV = getObjectCoordinates(viewpointLabel);
+
+    if (pointF && pointG && pointV) {
+      // Get angle between V→F and F→G vectors
+      const v1x = pointF.x - pointV.x;
+      const v1y = pointF.y - pointV.y;
+      const v2x = pointG.x - pointF.x;
+      const v2y = pointG.y - pointF.y;
+      const dot = v1x * v2x + v1y * v2y;
+      const mag1 = Math.sqrt(v1x * v1x + v1y * v1y);
+      const mag2 = Math.sqrt(v2x * v2x + v2y * v2y);
+      const angleDeg = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
+
+      let sentence = '';
+      if (angleDeg >= 45 && angleDeg <= 135) {
+        sentence = `${figureLabel} is next to ${GLabel}`;
+      } else if (angleDeg > 135 && angleDeg < 180) {
+        sentence = `${figureLabel} is behind ${GLabel}`;
+      } else if (angleDeg > 0 && angleDeg < 45) {
+        sentence = `${figureLabel} is in front of ${GLabel}`;
+      }
+      outputBox.textContent = sentence;
+      angleBox.textContent = `Angle: ${angleDeg.toFixed(1)}°`;
+    }
+  } else {
+    outputBox.textContent = '';
+    angleBox.textContent = '';
+  }
+};
+
+document.querySelectorAll('select').forEach(sel => sel.addEventListener('change', draw));
+  </script>
+</body>
+</html>
